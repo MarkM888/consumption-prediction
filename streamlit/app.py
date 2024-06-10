@@ -121,7 +121,7 @@ def prediction_page():
 
     ### ------ begin ------ jsk
     # Define local API endpoint
-    url = 'http://localhost:8000/predict'
+    url = 'https://api-w2mh3no3sa-ew.a.run.app/predict'
 
     # Create post request to the local API endpoint
     response = requests.post(url, json=features).json()
