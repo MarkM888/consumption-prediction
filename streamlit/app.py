@@ -77,93 +77,104 @@ def welcome_page():
 def prediction_page():
     st.markdown('<h1>House Consumption Predictor</h1>', unsafe_allow_html=True)
 
-    # For demonstration purposes, we'll create a mock dataframe similar to the original data structure
-    data = {
-        'location_name_Edinburgh': [1],
-        'location_name_Glasgow': [0],
-        'location_name_London': [0],
-        'hometype_house_or_bungalow': [1],
-        'hometype_flat': [0]
-    }
-    df = pd.DataFrame(data)
+    cities = ['London', 'Birmingham', 'Manchester', 'Leeds-Bradford',
+              'Glasgow', 'Southampton-Portsmouth','Liverpool', 'Newcastle',
+              'Nottingham','Sheffield']
 
     # Sidebar inputs
     st.sidebar.header('User Inputs')
-    num_people = st.sidebar.number_input('Number of People', min_value=1, value=1)
     num_rooms = st.sidebar.number_input('Number of Rooms', min_value=1, value=1)
-    location = st.sidebar.text_input('Location')
+    location = st.sidebar.selectbox('Location', cities)
     working_status = st.sidebar.selectbox('Working Status', ['Onsite', 'Work from Home'])
     hometype = st.sidebar.selectbox('Type of House', ['Flat', 'House'])
-    start_date = st.sidebar.date_input('Start Date')
-    num_days = st.sidebar.number_input('Number of Days', min_value=1, value=7)
 
     # Convert working status to binary
     working_status_code = 1 if working_status == 'Work from Home' else 0
 
-    # Prepare features for prediction
-    features = {
-        'residents': str(num_people),
-        'room_count': str(num_rooms),
-        'workstatus': str(working_status_code)
+    # Get latitude and longitude for the selected city
+    city_lat_long = {
+        'London': [51.5074,0.1278],
+        'Birmingham': [52.4862, 1.8904],
+        'Manchester': [53.4839, 2.2446],
+        'Leeds-Bradford': [53.8008,1.5491],
+        'Glasgow': [55.8642, 4.2518],
+        'Southampton-Portsmouth': [50.9097, 1.4044],
+        'Liverpool': [53.4084, 2.9916],
+        'Newcastle': [54.9783, 1.6178],
+        'Nottingham': [52.9548, 1.1581],
+        'Sheffield': [53.3811, 1.4701]
     }
 
-    ### ------ begin ------ Thais Code ---- But jsk commented out as not rqd atm
-    # # Add location features
-    # location_columns = [col for col in df.columns if col.startswith('location_name')]
-    # for col in location_columns:
-    #     features[col] = 1 if col == f'location_name_{location}' else 0
-    ### ------ end ------ Thais Code ---- But jsk commented out as not rqd atm
+    #Query the weather API to get the temperature for the next 7 days for the selected city
+    lat = city_lat_long[location][0]
+    long = city_lat_long[location][1]
 
+    # Weather API
+    weather_url = f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={long}&daily=temperature_2m_min,temperature_2m_max'
+
+    w_response = requests.get(weather_url).json()['daily']
+    dates = w_response['time']
+    temps_min = w_response['temperature_2m_min']
+    temps_max = w_response['temperature_2m_max']
+    temps_avg = [(temps_min[i] + temps_max[i])/2 for i in range(7)]
+
+    # Prepare features for prediction
+    features = {
+        'room_count': str(num_rooms),
+        'workstatus': str(working_status_code),
+        'temp_mean': temps_avg[0],
+        'temp_min': temps_min[0],
+        'temp_max': temps_max[0],
+        'total_area': num_rooms * 100
+    }
 
     # Add hometype feature
     hometype_code = 'house_or_bungalow' if hometype == 'House' else 'flat'
     features['hometype'] = hometype_code
 
-    ### ------ begin ------ jsk
-    # Define local API endpoint
+    # Prediction Model Public API
     url = 'https://api-w2mh3no3sa-ew.a.run.app/predict'
+
+    # Define the Number of Residents with a slider
+    num_people = st.slider('Number of People', min_value=1, max_value=10, value=1)
+    features['residents'] = str(num_people)
 
     # Create post request to the local API endpoint
     response = requests.post(url, json=features).json()
     prediction = response['prediction']
-    ### ------ end ------ jsk
 
-    # Display the "Predict" button
-    if st.sidebar.button('Predict'):
+    # Display the prediction
+    st.write(f'### Electricity Prediction: {prediction:.2f} kWh')
 
-        ### ------ begin ------ jsk
-        # Show single prediction
-        st.write(f'### Electricity Prediction: {prediction:.2f} kWh')
-        ### ------ end ------ jsk
+    # Generate daily predictions for the next 7 days
+    daily_predictions = []
 
-        # Generate daily predictions
-        date_range = pd.date_range(start=start_date, periods=num_days)
-        daily_predictions = []
-        for date in date_range:
-            # Mock temperature data for each day (this would normally come from a weather API)
-            temp_mean = np.random.uniform(-5, 20)
-            features['temp_mean'] = temp_mean
+    for i in range(len(dates)):
+        # Update features with updated temps
+        features['temp_mean'] = str(temps_avg[i])
+        features['temp_min'] = str(temps_min[i])
+        features['temp_max'] = str(temps_max[i])
 
-            # Mock prediction value
-            prediction = 20 + num_people * 2 + num_rooms * 3 + working_status_code * 5 + temp_mean * 1.5
-            daily_predictions.append((date, prediction))
+        # Daily Prediction Value
+        predictions = requests.post(url, json=features).json()['prediction']
+        daily_predictions.append((dates[i], predictions))
 
-        # Create a dataframe for daily predictions
-        predictions_df = pd.DataFrame(daily_predictions, columns=['Date', 'Predicted Consumption (kWh)'])
+    # Create a dataframe for daily predictions
+    predictions_df = pd.DataFrame(daily_predictions, columns=['Date', 'Predicted Consumption (kWh)'])
 
-        # Plot the predictions with gradient colors
-        st.markdown('<h2>Predicted Consumption Over Time</h2>', unsafe_allow_html=True)
+    # Plot the predictions with gradient colors
+    st.markdown('<h2>Predicted Consumption Over Time</h2>', unsafe_allow_html=True)
 
-        chart_data = predictions_df.set_index('Date').reset_index()
-        bar_chart = alt.Chart(chart_data).mark_bar().encode(
-            x='Date:T',
-            y='Predicted Consumption (kWh):Q',
-            color=alt.Color('Predicted Consumption (kWh):Q', scale=alt.Scale(scheme='viridis'))
-        ).properties(
-            width=700,
-            height=400
-        )
-        st.altair_chart(bar_chart, use_container_width=True)
+    chart_data = predictions_df.set_index('Date').reset_index()
+    bar_chart = alt.Chart(chart_data).mark_bar().encode(
+        x='Date:T',
+        y='Predicted Consumption (kWh):Q',
+        color=alt.Color('Predicted Consumption (kWh):Q', scale=alt.Scale(scheme='viridis'))
+    ).properties(
+        width=700,
+        height=400
+    )
+    st.altair_chart(bar_chart, use_container_width=True)
 
 if __name__ == '__main__':
     st.sidebar.title("Navigation")
