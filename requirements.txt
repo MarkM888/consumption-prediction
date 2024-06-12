@@ -1,5 +1,7 @@
 streamlit==1.26.0
 pandas
 numpy
-altair
+plotly
+  plotly.express
+  plotly.graph_objects
 requests
