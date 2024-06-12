@@ -118,6 +118,18 @@ def prediction_page():
     temps_max = w_response['temperature_2m_max']
     temps_avg = [(temps_min[i] + temps_max[i])/2 for i in range(7)]
 
+    # Display weather data
+    weather_df = pd.DataFrame({
+        'Date': dates,
+        'Min Temp (°C)': temps_min,
+        'Max Temp (°C)': temps_max,
+        'Avg Temp (°C)': temps_avg
+    })
+
+    st.markdown('<h2>7-Day Weather Forecast</h2>', unsafe_allow_html=True)
+    st.dataframe(weather_df)
+
+
     # Prepare features for prediction
     features = {
         'room_count': str(num_rooms),
