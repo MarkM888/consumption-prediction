@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt
 import requests
+import plotly.express as px
+import plotly.graph_objects as go
 
 def welcome_page():
     # Customize page background and text colors
@@ -125,10 +126,24 @@ def prediction_page():
         'Max Temp (°C)': temps_max,
         'Avg Temp (°C)': temps_avg
     })
+    #round off 2 decimal places
+    weather_df['Avg Temp (°C)'] = weather_df['Avg Temp (°C)'].round(2)
+
+    # weather_df.index = weather_df.index + 1  # Start indexing from 1
 
     st.markdown('<h2>7-Day Weather Forecast</h2>', unsafe_allow_html=True)
-    st.dataframe(weather_df)
 
+    # Create a Plotly table for better representation of weather data
+    fig = go.Figure(data=[go.Table(
+        header=dict(values=list(weather_df.columns),
+                    fill_color='paleturquoise',
+                    align='center'),
+        cells=dict(values=[weather_df['Date'], weather_df['Min Temp (°C)'], weather_df['Max Temp (°C)'], weather_df['Avg Temp (°C)']],
+                   align='center'))
+    ])
+    fig.update_layout(width=400, height=400)
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # Prepare features for prediction
     features = {
@@ -173,20 +188,30 @@ def prediction_page():
 
     # Create a dataframe for daily predictions
     predictions_df = pd.DataFrame(daily_predictions, columns=['Date', 'Predicted Consumption (kWh)'])
+    #round off 2 decimal places
+    predictions_df['Predicted Consumption (kWh)'] = predictions_df['Predicted Consumption (kWh)'].round(2)
 
-    # Plot the predictions with gradient colors
-    st.markdown('<h2>Predicted Consumption Over Time</h2>', unsafe_allow_html=True)
+    st.markdown('<h2>Predicted  Electricity Consumption Over Time</h2>', unsafe_allow_html=True)
 
-    chart_data = predictions_df.set_index('Date').reset_index()
-    bar_chart = alt.Chart(chart_data).mark_bar().encode(
-        x='Date:T',
-        y='Predicted Consumption (kWh):Q',
-        color=alt.Color('Predicted Consumption (kWh):Q', scale=alt.Scale(scheme='viridis'))
-    ).properties(
-        width=700,
-        height=400
+    #Plotly graph
+    fig = px.bar(
+        predictions_df,
+        x='Date',
+        y='Predicted Consumption (kWh)',
+        color='Predicted Consumption (kWh)',
+        color_continuous_scale='Viridis',
+        labels={'Predicted Consumption (kWh)': 'Predicted Consumption (kWh)'},
     )
-    st.altair_chart(bar_chart, use_container_width=True)
+
+    fig.update_layout(
+        width=432,
+        height=550,
+        xaxis_title='Date',
+        yaxis_title='Predicted Consumption (kWh)',
+        coloraxis_colorbar=dict(title='Consumption (kWh)')
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == '__main__':
     st.sidebar.title("Navigation")
