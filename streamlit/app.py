@@ -52,10 +52,10 @@ def welcome_page():
     # st.image('/mnt/c/Users/Usuario/Downloads/smart meter.jpg', use_column_width=True)
 
     # Display the content
-    st.markdown('<h1>Project Overview: Consumption Prediction</h1>', unsafe_allow_html=True)
+    st.markdown('<h1>Project Overview: Electricity Consumption Prediction</h1>', unsafe_allow_html=True)
 
     st.markdown('<h2>Objective</h2>', unsafe_allow_html=True)
-    st.markdown('<p>The "Consumption Prediction" project is focused on accurately forecasting household energy consumption to optimize energy usage and reduce associated costs. Utilizing advanced machine learning techniques, the project aims to predict total energy consumption by analyzing various factors such as weather conditions, demographic data, and appliance usage.</p>', unsafe_allow_html=True)
+    st.markdown('<p>The "Electricity Consumption Prediction" project is focused on accurately forecasting household energy consumption to optimize energy usage and reduce associated costs. Utilizing advanced machine learning techniques, the project aims to predict total energy consumption by analyzing various factors such as weather conditions, demographic data, and appliance usage.</p>', unsafe_allow_html=True)
 
     st.markdown('<h2>Dataset: IDEAL Household Energy</h2>', unsafe_allow_html=True)
     st.markdown('<p>The dataset for this project was collected from 255 homes in the UK over a two-year period. It provides comprehensive details on energy usage, environmental conditions, and demographic factors.</p>', unsafe_allow_html=True)
@@ -68,19 +68,19 @@ def welcome_page():
     st.markdown('<p>Data collection spanned from August 2016 to June 2018, offering a multi-year, seasonal snapshot of household energy consumption patterns.</p>', unsafe_allow_html=True)
 
     st.markdown('<h2>Data Preprocessing and Model Development</h2>', unsafe_allow_html=True)
-    st.markdown('<p>The initial dataset was 200GB in size but was efficiently reduced to 100KB through preprocessing. The objective is to leverage this refined dataset to develop a robust machine learning model capable of predicting household energy consumption in kilowatts based on the input variables.</p>', unsafe_allow_html=True)
+    st.markdown('<p>The initial dataset was 200GB in size but was efficiently reduced to 100KB through preprocessing. The objective is to leverage this refined dataset to develop a robust machine learning model capable of predicting household electricity consumption in kilowatts based on the input variables.</p>', unsafe_allow_html=True)
 
     st.markdown('<h2>Project Goals</h2>', unsafe_allow_html=True)
-    st.markdown('<ul><li><strong>Accurate Predictions</strong>: Develop a reliable model to forecast energy consumption.</li><li><strong>Cost Optimization</strong>: Enable households to reduce energy costs through better consumption predictions.</li><li><strong>Energy Efficiency</strong>: Support initiatives aimed at optimizing energy usage and enhancing overall efficiency.</li></ul>', unsafe_allow_html=True)
+    st.markdown('<ul><li><strong>Accurate Predictions</strong>: Develop a reliable model to forecast electricity consumption.</li><li><strong>Cost Optimization</strong>: Enable households to reduce energy costs through better consumption predictions.</li><li><strong>Energy Efficiency</strong>: Support initiatives aimed at optimizing energy usage and enhancing overall efficiency.</li></ul>', unsafe_allow_html=True)
 
     st.markdown('<p>This project will provide valuable insights and tools for energy management, benefiting both consumers and energy providers.</p>', unsafe_allow_html=True)
 
 def prediction_page():
-    st.markdown('<h1>House Consumption Predictor</h1>', unsafe_allow_html=True)
+    st.markdown('<h1>Household Electricity Consumption Predictor</h1>', unsafe_allow_html=True)
 
     cities = ['London', 'Birmingham', 'Manchester', 'Leeds-Bradford',
               'Glasgow', 'Southampton-Portsmouth','Liverpool', 'Newcastle',
-              'Nottingham','Sheffield']
+              'Nottingham','Sheffield','Edinburgh','Cardiff','Belfast']
 
     # Sidebar inputs
     st.sidebar.header('User Inputs')
@@ -103,7 +103,10 @@ def prediction_page():
         'Liverpool': [53.4084, 2.9916],
         'Newcastle': [54.9783, 1.6178],
         'Nottingham': [52.9548, 1.1581],
-        'Sheffield': [53.3811, 1.4701]
+        'Sheffield': [53.3811, 1.4701],
+        'Edinburgh' :[55.9533 , 3.1883],
+        'Cardiff'  : [51.4837 , 3.1681],
+        'Belfast'  : [54.5973 , 5.9301]
     }
 
     #Query the weather API to get the temperature for the next 7 days for the selected city
@@ -129,32 +132,39 @@ def prediction_page():
     #round off 2 decimal places
     weather_df['Avg Temp (°C)'] = weather_df['Avg Temp (°C)'].round(2)
 
-    # weather_df.index = weather_df.index + 1  # Start indexing from 1
-
     st.markdown('<h2>7-Day Weather Forecast</h2>', unsafe_allow_html=True)
 
-    # Create a Plotly table for better representation of weather data
+    # Define columns for the table
+    columns = ['Today', 'Tomorrow'] + weather_df['Date'][2:].tolist()
+
+    # Create data for the table
+    avg_temps = [weather_df['Avg Temp (°C)'][0], weather_df['Avg Temp (°C)'][1]] + weather_df['Avg Temp (°C)'][2:].tolist()
+
+        # Prepare values as a list of lists for each column
+    values = [[avg_temps[i]] for i in range(len(avg_temps))]
+
+
+
+    # Create a Plotly table with larger font size and fill color ivory
     fig = go.Figure(data=[go.Table(
-        header=dict(values=list(weather_df.columns),
+        header=dict(values=columns,
                     fill_color='paleturquoise',
-                    align='center'),
-        cells=dict(values=[weather_df['Date'], weather_df['Min Temp (°C)'], weather_df['Max Temp (°C)'], weather_df['Avg Temp (°C)']],
-                   align='center',fill_color='ivory' ))
-    ])
-    fig.update_layout(width=400, height=400)
+                    align='center',
+                    font=dict(size=16)),
+        cells=dict(
+            values=values,
+            fill_color='ivory',
+            align='center',
+            font=dict(size=18)
+        )
+    )])
+
+    fig.update_layout(width=900, height=300)
 
     st.plotly_chart(fig, use_container_width=True)
-    # Create a Plotly line chart for average temperature
-    fig_line = px.line(
-    weather_df,
-    x='Date',
-    y='Avg Temp (°C)',
-    title='Average Temperature Over Time',
-    labels={'Avg Temp (°C)': 'Average Temperature (°C)', 'Date': 'Date'}
-)
 
-    fig_line.update_layout(width=700, height=500)
-    st.plotly_chart(fig_line, use_container_width=True)
+
+
     # Prepare features for prediction
     features = {
         'room_count': str(num_rooms),
@@ -173,7 +183,7 @@ def prediction_page():
     url = 'https://api-w2mh3no3sa-ew.a.run.app/predict'
 
     # Define the Number of Residents with a slider
-    num_people = st.slider('Number of People', min_value=1, max_value=10, value=1)
+    num_people = st.slider('Number of People', min_value=1, max_value=8, value=1)
     features['residents'] = str(num_people)
 
     # Create post request to the local API endpoint
@@ -216,7 +226,7 @@ def prediction_page():
     # Update layout to show y values and add dotted lines
     fig.update_layout(
     width=432,
-    height=550,
+    height=600,
     xaxis_title='Date',
     yaxis_title='Predicted Consumption (kWh)',
     coloraxis_colorbar=dict(title='Consumption (kWh)')
