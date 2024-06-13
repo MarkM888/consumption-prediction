@@ -139,12 +139,22 @@ def prediction_page():
                     fill_color='paleturquoise',
                     align='center'),
         cells=dict(values=[weather_df['Date'], weather_df['Min Temp (°C)'], weather_df['Max Temp (°C)'], weather_df['Avg Temp (°C)']],
-                   align='center'))
+                   align='center',fill_color='ivory' ))
     ])
     fig.update_layout(width=400, height=400)
 
     st.plotly_chart(fig, use_container_width=True)
+    # Create a Plotly line chart for average temperature
+    fig_line = px.line(
+    weather_df,
+    x='Date',
+    y='Avg Temp (°C)',
+    title='Average Temperature Over Time',
+    labels={'Avg Temp (°C)': 'Average Temperature (°C)', 'Date': 'Date'}
+)
 
+    fig_line.update_layout(width=700, height=500)
+    st.plotly_chart(fig_line, use_container_width=True)
     # Prepare features for prediction
     features = {
         'room_count': str(num_rooms),
@@ -195,22 +205,80 @@ def prediction_page():
 
     #Plotly graph
     fig = px.bar(
-        predictions_df,
-        x='Date',
-        y='Predicted Consumption (kWh)',
-        color='Predicted Consumption (kWh)',
-        color_continuous_scale='Viridis',
-        labels={'Predicted Consumption (kWh)': 'Predicted Consumption (kWh)'},
-    )
+    predictions_df,
+    x='Date',
+    y='Predicted Consumption (kWh)',
+    color='Predicted Consumption (kWh)',
+    color_continuous_scale='Viridis',
+    labels={'Predicted Consumption (kWh)': 'Predicted Consumption (kWh)'},
+)
 
+    # Update layout to show y values and add dotted lines
     fig.update_layout(
-        width=432,
-        height=550,
-        xaxis_title='Date',
-        yaxis_title='Predicted Consumption (kWh)',
-        coloraxis_colorbar=dict(title='Consumption (kWh)')
+    width=432,
+    height=550,
+    xaxis_title='Date',
+    yaxis_title='Predicted Consumption (kWh)',
+    coloraxis_colorbar=dict(title='Consumption (kWh)')
+)
+
+    # Add y values on the bars
+    fig.update_traces(texttemplate='%{y}', textposition='outside')
+
+    # Add dotted lines
+    lines = [
+        {"y": 11.78, "color": "Red", "name": "High (11.78 kWh)"},
+        {"y": 7.94, "color": "Blue", "name": "Medium (7.94 kWh)"},
+        {"y": 4.93, "color": "Green", "name": "Low (4.93 kWh)"}
+    ]
+
+    for line in lines:
+            fig.add_shape(
+            type="line",
+            x0=predictions_df['Date'].min(),
+            y0=line["y"],
+            x1=predictions_df['Date'].max(),
+            y1=line["y"],
+            line=dict(
+                color=line["color"],
+                width=2,
+                dash="dot",
+            ),
+            name=line["name"]
+        )
+
+    # Add legend manually for the lines
+    for line in lines:
+        fig.add_trace(
+            go.Scatter(
+                x=[predictions_df['Date'].min(), predictions_df['Date'].max()],
+                y=[line["y"], line["y"]],
+                mode="lines",
+                line=dict(color=line["color"], width=4, dash="dot"),
+                showlegend=True,
+                name=line["name"]
+            )
     )
 
+    # Update layout to show the shapes and text annotations
+    fig.update_shapes(dict(xref='x', yref='y'))
+    fig.update_traces(textfont_size=12)
+
+    # Customize legend to be below the plot
+    fig.update_layout(
+    legend=dict(
+        title="National Average",
+        orientation="h",
+        yanchor="top",
+        y=1.3,
+        xanchor="center",
+        x=0.5
+    ),
+    margin=dict(l=20, r=20, t=20, b=40)
+)
+
+
+    # Display the chart in Streamlit
     st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == '__main__':
